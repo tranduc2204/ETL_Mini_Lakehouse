@@ -6,21 +6,12 @@ __pycache__/
 spark-warehouse/
 metastore_db/
 
-# Data
-data/
-warehouse/
-bronze/
-silver/
-gold/
 
 # Jars
 jars/
 
-# Iceberg
-metadata/
 
-# Parquet
-*.parquet
+
 
 # Logs
 *.log
