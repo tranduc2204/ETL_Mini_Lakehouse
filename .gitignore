@@ -25,6 +25,6 @@ metadata/
 # Logs
 *.log
 
-
+minio_data/.
 
 
