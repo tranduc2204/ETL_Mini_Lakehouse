@@ -1,7 +1,7 @@
 from config.spark_session import create_spark_session
 from datetime import datetime
 import json
-from config.spark_sessijbon import create_spark_session
+from config.spark_session import create_spark_session
 from config.database import JDBC_URL,POSTGRES_USER,POSTGRES_PASSWORD
 from config.logging_config import get_logger
 

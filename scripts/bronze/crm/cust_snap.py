@@ -42,7 +42,7 @@ def customers_snapshot():
 
         df.write.mode("overwrite").option("compressidataon", "snappy").parquet(parquet_path)
 
-         
+        
         # ghi meta data
         metadata = [{
             "source": "CRM",
@@ -55,12 +55,10 @@ def customers_snapshot():
             "created_at": datetime.now().isoformat()
         }]
         
-        
         metadata_path = f"{base_path}/metadata"
 
         logger.info(f"Writing metadata to {metadata_path}")
 
-            
         print (metadata_path)
         meta_df = spark.createDataFrame(metadata)\
                         .coalesce(1)\

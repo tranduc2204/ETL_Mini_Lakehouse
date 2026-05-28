@@ -20,18 +20,18 @@ def bootstrap_crm_customers():
         
         df = spark.read.parquet(path)
         df = df.withColumn("_created_at", current_timestamp())
+        df = df.dropDuplicates(["cst_id"])
         df.show ()
+        
 
         (
-            # df.writeTo("lakehouse.crm.customers")
-            #     .using("iceberg")
-            #     .tableProperty("format-version", "2")
-            #     .createOrReplace()
             df.writeTo("lakehouse.crm.customers")
+            .using("iceberg")
+            .partitionedBy ("_created_at")
             .tableProperty("format-version", "2")
-            .create()
+            .createOrReplace()
         )
-      
+        print ("Iceberg table created sussessfully")
 
     except Exception as e:
         print (e)

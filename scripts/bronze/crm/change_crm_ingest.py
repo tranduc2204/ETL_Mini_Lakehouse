@@ -19,13 +19,14 @@ def change_ingest_crm(old_watermark, batch_end, table_name: str, col_name: str):
 
             FROM "CRM".cdc_log l
              JOIN "CRM".{table_name} o
-                ON l.id = o.{col_name}
+                ON l.id = o.{col_name}::text
             WHERE l.changed_at > '{old_watermark}'
             AND l.changed_at <= '{batch_end}'
 
             ORDER BY l.changed_at
         ) AS cdc_query
         """
+       
        
         df = spark.read \
             .format("jdbc") \
@@ -35,7 +36,8 @@ def change_ingest_crm(old_watermark, batch_end, table_name: str, col_name: str):
             .option("password", POSTGRES_PASSWORD) \
             .option("driver", "org.postgresql.Driver") \
             .load()
-       
+        
+
         return spark, df
     except Exception as e:
         print (e)

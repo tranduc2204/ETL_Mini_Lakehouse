@@ -9,7 +9,7 @@ def bronze_ingest_crm_customers():
 
         old_watermark = get_watermark_CRM(pipeline_name)
         
-
+        
 
         batch_end = get_watermark_CRM_end(pipeline_name)
 
@@ -21,6 +21,7 @@ def bronze_ingest_crm_customers():
         base_path = f"""
                 s3a://bronze/cdc/crm/customers/load_date={load_date}
             """.strip()
+        
         spark, df =  change_ingest_crm(old_watermark=old_watermark, batch_end=batch_end, table_name='cust_info',col_name='cst_id') 
 
         
@@ -31,7 +32,7 @@ def bronze_ingest_crm_customers():
         print(f"Extracted {df.count()} records")
         df.show ()
         df.write.mode("append").option("compression", "snappy").parquet(base_path)
-
+        
         update_watermark_CRM(pipeline_name, batch_end)
         print ("")
         print ("check info" , pipeline_name, "  ", batch_end)
@@ -42,10 +43,10 @@ def bronze_ingest_crm_customers():
         
     except Exception as e:
         print (e)
-    finally: 
-        if spark is not None:
-            spark.stop()
-            print ("Spark was stopped")
+    # finally: 
+    #     if spark is not None:
+    #         spark.stop()
+    #         print ("Spark was stopped")
     
 
 

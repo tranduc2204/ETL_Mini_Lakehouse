@@ -4,6 +4,7 @@ from scripts.bronze.crm.change_crm_ingest import change_ingest_crm
 
 
 def bronze_ingest_crm_products():
+  
     try:
         pipeline_name = "crm_products"
 
