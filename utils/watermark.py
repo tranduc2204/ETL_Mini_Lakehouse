@@ -124,9 +124,48 @@ def update_watermark_ERP (pipeline_name: str, new_watermark: datetime):
             }
         )
         conn.commit()
+def list_file_processed_crm(table_name: str):
+
+    query = f"""
+        SELECT file_name 
+        FROM "CRM".processed_files
+        WHERE table_name = '{table_name}'
+    """
+
+    result_df = pd.read_sql(
+        query,
+        engine_crm
+    )
+    processed_files = result_df['file_name'].tolist()
+    
+    return processed_files
+
+def save_list_file_processed_crm (files_name: str, processed_at: datetime, table_name: str):
+    with engine_crm.connect() as conn:
+        for file in files_name:
+            conn.execute(
+                text ("""
+                    INSERT INTO "CRM".processed_files (file_name, processed_at, table_name)
+                    VALUES(
+                        :file_name,
+                        :processed_at,
+                        :table_name
+                    )
+                    ON CONFLICT (file_name) DO NOTHING
+                """),
+                {
+                    "file_name": file,
+                    "processed_at": processed_at,
+                    "table_name": table_name
+                }
+            )
+        conn.commit()
+    print ("Saved done")
+
     
 if  __name__ == "__main__":
-    get_watermark_CRM("test")
+    files_name = ['file13', 'file12']
+    save_list_file_processed_crm(files_name=files_name, processed_at= datetime.now(), table_name= 'cdc_log')
 
 
 
