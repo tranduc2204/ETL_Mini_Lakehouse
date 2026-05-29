@@ -33,6 +33,7 @@ def bronze_ingest_crm_customers():
         df.show ()
         df.write.mode("append").option("compression", "snappy").parquet(base_path)
         
+         
         update_watermark_CRM(pipeline_name, batch_end)
         print ("")
         print ("check info" , pipeline_name, "  ", batch_end)
