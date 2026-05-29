@@ -10,7 +10,7 @@ from pyspark.sql.functions import current_timestamp
 def bootstrap_crm_customers():
     spark = None
     try:
-
+        # create spark session for bootstrap customers
         spark = create_spark_session("silver_bootstrap_cust")
         
         path = f"""
@@ -23,7 +23,7 @@ def bootstrap_crm_customers():
         df = df.dropDuplicates(["cst_id"])
         df.show ()
         
-
+        # tạo table iceberg rồi lưu vào
         (
             df.writeTo("lakehouse.crm.customers")
             .using("iceberg")

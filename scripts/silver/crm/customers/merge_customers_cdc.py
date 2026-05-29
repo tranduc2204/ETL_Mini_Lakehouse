@@ -10,7 +10,7 @@
 from config.spark_session import create_spark_session
 from utils.watermark import list_file_processed_crm, save_list_file_processed_crm
 import os
-from pyspark.sql.functions import col, lit, rank, col
+from pyspark.sql.functions import col, lit, rank, col, row_number
 from pyspark.sql.window import Window
 
 
@@ -20,6 +20,7 @@ def merge_crm_customers():
     try:
         spark = create_spark_session ("merge_customers_cdc")
         #bronze/snapshot/crm/customers
+        # lấy toàn bộ thông tin của snap lần đầu tiên
         path ="""
         s3a://bronze/snapshot/crm/customers/load_date=*/data/
         """.strip()
@@ -27,7 +28,7 @@ def merge_crm_customers():
         df_snap = df_snap.withColumn("operation_type", lit('snapshot'))
         df_snap = df_snap.dropDuplicates()
 
-       
+        # lấy thông tin của customers lên load cdc
         path = """
         s3a://bronze/cdc/crm/customers/load_date=*/
         """.strip()
@@ -58,17 +59,18 @@ def merge_crm_customers():
             df_cdc = df_cdc.dropDuplicates()
             # df_cdc.sort(["log_id","updated_at"]).show()
 
-            window_spec = (
-                Window.partitionBy(col("cst_id"))\
-                        .orderBy(col("updated_at").desc())
-            )
-            df_rank = (
-                df_cdc.withColumn("rnk", rank().over(window_spec))
+            # window_spec = (
+            #     Window.partitionBy(col("cst_id"))\
+            #             .orderBy(col("updated_at").desc())
+            # )
+            # df_rank = (
+            #     df_cdc.withColumn("rnk", rank().over(window_spec))
 
-            )
-            df_rank.show()
-            return
-            df_rank = df_rank.filter(col("rnk") == 1)
+            # )
+  
+            
+            # df_rank = df_rank.filter(col("rnk") == 1)
+            df_rank = df_cdc
             
             
             df_rank = df_rank[[col("cst_id"), col("cst_key"), col("cst_firstname"), col("cst_lastname"), col("cst_marital_status"), col("cst_gndr"), col("cst_create_date"), col("updated_at"), col("operation_type")]]
@@ -78,8 +80,25 @@ def merge_crm_customers():
             df_snap.dropDuplicates().show()
 
             df_result = df_snap.unionByName(df_rank)
-            df_result.show ()
+            # df_result.filter(col("operation_type") != "snapshot").show ()
+            window_spec = (
+                Window.partitionBy("cst_id")\
+                .orderBy(col("updated_at").desc())
+            )
 
+            df_latest = (
+                df_result.withColumn("rn",row_number().over(window_spec)\
+            ).filter(col("rn") == 1)\
+            .drop(col("rn")))
+            
+            df_final = df_latest.filter(
+                col("operation_type") != "DELETE"
+            )
+            df_final.show()
+
+            print ("tổng số dòng", df_final.count())
+    
+        
     except Exception as e:
         print (e)
 
