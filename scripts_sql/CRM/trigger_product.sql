@@ -21,7 +21,7 @@ BEGIN
         )
         VALUES (
             'INSERT',
-            NEW.cst_id,
+            NEW.prd_id,
 			'crm_products',
             CURRENT_TIMESTAMP
         );
@@ -40,7 +40,7 @@ BEGIN
         )
         VALUES (
             'UPDATE',
-            NEW.cst_id,
+            NEW.prd_id,
 			'crm_products',
             CURRENT_TIMESTAMP
         );
@@ -62,7 +62,7 @@ BEGIN
         )
         VALUES (
             'DELETE',
-            OLD.cst_id,
+            OLD.prd_id,
 			'crm_products',
             CURRENT_TIMESTAMP
         );

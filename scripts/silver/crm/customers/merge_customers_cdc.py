@@ -12,12 +12,14 @@ from utils.watermark import list_file_processed_crm, save_list_file_processed_cr
 import os
 from pyspark.sql.functions import col, lit, rank, col, row_number
 from pyspark.sql.window import Window
+from datetime import datetime
 
 
 
 def merge_crm_customers():
     spark = None 
     try:
+        load_date = datetime.today().strftime("%Y-%m-%d")
         spark = create_spark_session ("merge_customers_cdc")
         #bronze/snapshot/crm/customers
         # lấy toàn bộ thông tin của snap lần đầu tiên
@@ -147,27 +149,12 @@ def merge_crm_customers():
                     s._created_at
                 )
                 """)
-            spark.table("lakehouse.crm.customers").filter.show()
-            # df = spark.read.format("iceberg").load("lakehouse.crm.customers")
+            # spark.table("lakehouse.crm.customers").filter.show()
+            df = spark.read.format("iceberg").load("lakehouse.crm.customers")
 
-            # MERGE INTO silver.crm.customers t
-            # USING customers_cdc_latest s
-            # ON t.cst_id = s.cst_id
+            print ("check: ", new_file, load_date)
 
-            # WHEN MATCHED AND s.operation_type = 'DELETE'
-            # THEN DELETE
-
-            # WHEN MATCHED AND s.operation_type = 'UPDATE'
-            # THEN UPDATE SET *
-
-            # WHEN NOT MATCHED AND s.operation_type = 'INSERT'
-            # THEN INSERT *
-            
-            df_final = df_latest.filter(
-                col("operation_type") != "DELETE"
-            )
-
-            
+            save_list_file_processed_crm (files_name= new_file, processed_at= load_date, table_name= 'cust_info')
             # print ("tổng số dòng", df_latest.count())
     
         

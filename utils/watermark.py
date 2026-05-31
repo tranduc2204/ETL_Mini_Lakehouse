@@ -160,6 +160,7 @@ def save_list_file_processed_crm (files_name: str, processed_at: datetime, table
                 }
             )
         conn.commit()
+        
     print ("Saved done")
 
     
