@@ -20,6 +20,8 @@ CREATE TABLE processed_files (
     processed_at TIMESTAMP
     
 );
+ALTER TABLE "CRM".processed_files ADD table_name varchar(50) NULL;
+
 
 
 

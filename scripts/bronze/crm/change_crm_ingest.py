@@ -37,7 +37,7 @@ def change_ingest_crm(old_watermark, batch_end, table_name: str, col_name: str):
             .option("driver", "org.postgresql.Driver") \
             .load()
         
-      
+   
 
         return spark, df
     except Exception as e:
