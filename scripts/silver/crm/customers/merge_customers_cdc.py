@@ -14,7 +14,7 @@ from pyspark.sql.functions import col, lit, rank, col, row_number
 from pyspark.sql.window import Window
 from datetime import datetime
 
-
+ 
 
 def merge_crm_customers():
     spark = None 
