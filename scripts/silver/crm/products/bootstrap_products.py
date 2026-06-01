@@ -2,7 +2,7 @@
 # create iceberg products
 
 from config.spark_session import create_spark_session
-from pyspark.sql.functions import current_timestamp
+from pyspark.sql.functions import col, current_timestamp
 
 
 
@@ -22,7 +22,12 @@ def bootstrap_crm_products():
         df = df.withColumn("_created_at", current_timestamp())
         df = df.dropDuplicates(["prd_id"])
         df.show ()
-
+        df = df.withColumn(
+            "prd_id",
+            col("prd_id").cast("string")
+        )
+        
+     
         (
             df.writeTo("lakehouse.crm.products")
             .using("iceberg")

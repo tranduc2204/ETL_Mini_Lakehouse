@@ -2,7 +2,7 @@
 
 #
 from config.spark_session import create_spark_session
-from pyspark.sql.functions import current_timestamp
+from pyspark.sql.functions import col, current_timestamp
 
 
 
@@ -24,8 +24,14 @@ def bootstrap_crm_sales():
         
         df = df.dropDuplicates(["sls_ord_num"])
         df.show ()
-        
 
+         
+        df = df.withColumn(
+            "sls_ord_num",
+            col("sls_ord_num").cast("string")
+        )
+        
+        
         (
             df.writeTo("lakehouse.crm.sales")
             .using("iceberg")

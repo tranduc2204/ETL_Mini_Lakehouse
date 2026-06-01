@@ -21,14 +21,13 @@ def merge_crm_customers():
     try:
         load_date = datetime.today().strftime("%Y-%m-%d")
         spark = create_spark_session ("merge_customers_cdc")
-        #bronze/snapshot/crm/customers
-        # lấy toàn bộ thông tin của snap lần đầu tiên
-        path ="""
-        s3a://silver/crm/customers/data/_created_at=*/
-        """.strip()
-        df_snap = spark.read.parquet(path)  
-        df_snap = df_snap.withColumn("operation_type", lit('snapshot'))
-        df_snap = df_snap.dropDuplicates()
+     
+        # path ="""
+        # s3a://silver/crm/customers/data/_created_at=*/
+        # """.strip()
+        # df_snap = spark.read.parquet(path)  
+        # df_snap = df_snap.withColumn("operation_type", lit('snapshot'))
+        # df_snap = df_snap.dropDuplicates()
 
 
 
@@ -48,9 +47,10 @@ def merge_crm_customers():
             files_list.append(f)
         
        
-        processed_files = list_file_processed_crm('cust_info')
        
+        processed_files = list_file_processed_crm('cust_info')
 
+        
 
         new_file = [file for file in files_list
                         if file not in processed_files]
@@ -105,8 +105,9 @@ def merge_crm_customers():
 
             df_merge.createOrReplaceTempView("customers_cdc_latest")    
             
-            df_result.printSchema()
-            spark.table("lakehouse.crm.customers").printSchema()
+            # print info schema
+            # df_result.printSchema()
+            # spark.table("lakehouse.crm.customers").printSchema()
 
 
             spark.sql("""

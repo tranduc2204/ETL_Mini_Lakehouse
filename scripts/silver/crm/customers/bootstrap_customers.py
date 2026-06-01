@@ -2,7 +2,7 @@
 
 #
 from config.spark_session import create_spark_session
-from pyspark.sql.functions import current_timestamp
+from pyspark.sql.functions import col, current_timestamp
 
 
 
@@ -22,6 +22,10 @@ def bootstrap_crm_customers():
         df = df.withColumn("_created_at", current_timestamp())
         df = df.dropDuplicates(["cst_id"])
         df.show ()
+        df = df.withColumn(
+            "cst_id",
+            col("cst_id").cast("string")
+        )
         
         # tạo table iceberg rồi lưu vào
         (

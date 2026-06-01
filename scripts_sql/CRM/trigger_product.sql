@@ -81,7 +81,7 @@ create or replace TRIGGER crm_prd_cdc_trigger
 BEFORE INSERT OR UPDATE OR DELETE
 ON prd_info
 FOR EACH ROW
-EXECUTE FUNCTION track_crm_cust_changes();
+EXECUTE FUNCTION track_prd_cust_changes();
 
 
 
