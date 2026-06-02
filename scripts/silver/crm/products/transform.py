@@ -1,5 +1,16 @@
+
 from config.spark_session import create_spark_session
-from pyspark.sql.functions import col, trim, upper, when, trim, row_number
+from pyspark.sql.functions import (
+                                    regexp_replace,
+                                    substring,
+                                    when,
+                                    upper,
+                                    trim,
+                                    coalesce,
+                                    lit,
+                                    lead,
+                                    date_sub,
+                                    to_date, col)
 from datetime import datetime
 from pyspark.sql.window import Window
 
@@ -14,26 +25,67 @@ def transform_crm_products():
         
         df = spark.read.format("iceberg").load("lakehouse.crm.products")
         
-        df.show()
-        print (df.count())
-        return
+       
 
-        df = df.filter(col("prd_id").isNotNull())
+        window_spec = Window.partitionBy("prd_key").orderBy("prd_start_dt")
+        df_transform = (
+            df
+            .withColumn(
+                "cat_id",
+                regexp_replace(substring(col("prd_key"), 1, 5), "-", "_")
+            )
+            .withColumn(
+                "prd_key_new",
+                substring(col("prd_key"), 7, 1000)
+            )
+            .withColumn(
+                "prd_cost",
+                coalesce(col("prd_cost"), lit(0))
+            )
+            .withColumn(
+                "prd_line",
+                when(upper(trim(col("prd_line"))) == "M", "Mountain")
+                .when(upper(trim(col("prd_line"))) == "R", "Road")
+                .when(upper(trim(col("prd_line"))) == "S", "Other Sales")
+                .when(upper(trim(col("prd_line"))) == "T", "Touring")
+                .otherwise("n/a")
+            )
+            .withColumn(
+                "prd_start_dt",
+                to_date(col("prd_start_dt"))
+            )
+            .withColumn(
+                "prd_end_dt",
+                date_sub(
+                    lead("prd_start_dt").over(window_spec),
+                    1
+                )
+            )
+            .drop("prd_key")
+            .withColumnRenamed("prd_key_new", "prd_key")
+            .select(
+                "prd_id",
+                "cat_id",
+                "prd_key",
+                "prd_nm",
+                "prd_cost",
+                "prd_line",
+                "prd_start_dt",
+                "prd_end_dt",
+                "_created_at"
+            )
+        )
+        df_transform.show()
+         
+
+        # (
+        #     df_transform.writeTo("lakehouse.crm.products")
+        #     .overwritePartitions()
+        # )
+        df_transform.write.mode("overwrite").saveAsTable("lakehouse.crm.products")
         
-        df = df.withColumn("prd_key", trim("prd_nm"))\
-                .withColumn("prd_nm", trim("prd_nm"))\
-                .withColumn("prd_line", trim("prd_line"))
-        
-        df.show ()
-        print (df.count())
-        window_spec =Window.partitionBy("prd_id").orderBy(col("_created_at").desc())
-        df = df.withColumn("row_num", row_number().over(window_spec))\
-                .filter(col("row_num") == 1)\
-                .drop("row_num")
 
-
-        df.show ()
-        print (df.count())
+     
     except Exception as e:
         print(f"Error in transform_crm_products: {e}")
     finally:
