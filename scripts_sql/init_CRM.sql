@@ -10,7 +10,7 @@ CREATE TABLE cdc_log (
     log_id SERIAL PRIMARY KEY,
     operation_type VARCHAR(10),
     table_name VARCHAR(30),
-    id INT,
+    id VARCHAR(50),
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -20,7 +20,7 @@ CREATE TABLE processed_files (
     processed_at TIMESTAMP
     
 );
-ALTER TABLE "CRM".processed_files ADD table_name varchar(50) NULL;
+ALTER TABLE "ERP".processed_files ADD table_name varchar(50) NULL;
 
 
 

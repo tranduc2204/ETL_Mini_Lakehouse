@@ -16,7 +16,7 @@ BEGIN
         )
         VALUES (
             'INSERT',
-            NEW.CID,
+            NEW.cid,
 			'erp_customers',
             CURRENT_TIMESTAMP
         );
@@ -35,7 +35,7 @@ BEGIN
         )
         VALUES (
             'UPDATE',
-            NEW.CID,
+            NEW.cid,
 			'erp_customers',
             CURRENT_TIMESTAMP
         );
@@ -57,7 +57,7 @@ BEGIN
         )
         VALUES (
             'DELETE',
-            OLD.CID,
+            OLD.cid,
 			'erp_customers',
             CURRENT_TIMESTAMP
         );

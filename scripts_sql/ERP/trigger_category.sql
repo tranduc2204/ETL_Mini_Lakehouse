@@ -22,7 +22,7 @@ BEGIN
         )
         VALUES (
             'INSERT',
-            NEW.ID,
+            NEW.id,
 			'erp_categories',
             CURRENT_TIMESTAMP
         );
@@ -41,7 +41,7 @@ BEGIN
         )
         VALUES (
             'UPDATE',
-            NEW.ID,
+            NEW.id,
 			'erp_categories',
             CURRENT_TIMESTAMP
         );
@@ -63,7 +63,7 @@ BEGIN
         )
         VALUES (
             'DELETE',
-            OLD.ID,
+            OLD.id,
 			'erp_categories',
             CURRENT_TIMESTAMP
         );
