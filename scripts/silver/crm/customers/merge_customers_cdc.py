@@ -18,7 +18,7 @@ from datetime import datetime
 
 def merge_crm_customers():
     spark = None 
-    try:
+    try: 
         load_date = datetime.today().strftime("%Y-%m-%d")
         spark = create_spark_session ("merge_customers_cdc")
      

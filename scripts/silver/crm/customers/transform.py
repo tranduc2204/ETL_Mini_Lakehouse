@@ -5,7 +5,7 @@ from pyspark.sql.window import Window
 
 def transform_crm_customers():
     spark = None 
-    try:
+    try: 
         load_date = datetime.today().strftime("%Y-%m-%d")
         spark = create_spark_session ("transform_crm_customers")
 
@@ -42,8 +42,8 @@ def transform_crm_customers():
     except Exception as e:
         print(f"Error in transform_crm_customers: {e}")
     finally:
-        if spark:
-            spark.stop()    
+       
+        spark.stop()    
 
 if __name__ == "__main__":
     transform_crm_customers()   
