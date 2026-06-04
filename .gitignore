@@ -19,3 +19,5 @@ jars/
 minio_data/.
 
 
+.env
+minio_data/

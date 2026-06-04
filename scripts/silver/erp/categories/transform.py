@@ -1,3 +1,5 @@
+from sqlalchemy import true
+
 from config.spark_session import create_spark_session
 from pyspark.sql.functions import col
 from datetime import datetime
