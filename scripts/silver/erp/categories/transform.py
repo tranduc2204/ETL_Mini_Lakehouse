@@ -1,4 +1,3 @@
-from sqlalchemy import true
 
 from config.spark_session import create_spark_session
 from pyspark.sql.functions import col
@@ -37,7 +36,7 @@ def transform_erp_categories():
         (
             df_out.writeTo(target_table)
             .using("iceberg")
-            .overwrite(true)
+            .overwrite()
             .createOrReplace()
         )
 
