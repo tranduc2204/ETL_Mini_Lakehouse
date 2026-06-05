@@ -3,8 +3,10 @@
 #
 from config.spark_session import create_spark_session
 from pyspark.sql.functions import current_timestamp
+from config.logging_config import get_logger
 
 
+logger = get_logger("silver.erp.categories.bootstrap")
 
 
 def bootstrap_crm_categories():

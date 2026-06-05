@@ -1,13 +1,20 @@
 from config.spark_session import create_spark_session
 from datetime import datetime
 from config.database import JDBC_URL,POSTGRES_USER,POSTGRES_PASSWORD
+from config.logging_config import get_logger
 from pyspark.sql.functions import col, coalesce
 
+
+logger = get_logger("bronze.erp.change_ingest")
 
 
 def change_ingest_erp(old_watermark, batch_end, table_name: str, col_name: str):
     spark = None
     try:
+        logger.info(
+            f"Starting CDC extract | table={table_name} | key={col_name} | "
+            f"window=({old_watermark} , {batch_end}]"
+        )
         spark = create_spark_session("bronze_crm")
         # LEFT JOIN: giữ lại các dòng DELETE dù bản ghi đã biến mất khỏi bảng nguồn.
         # l.id luôn mang giá trị khóa chính (kể cả OLD.<pk> khi xóa); o.* sẽ NULL cho dòng DELETE.
@@ -39,6 +46,8 @@ def change_ingest_erp(old_watermark, batch_end, table_name: str, col_name: str):
             .option("password", POSTGRES_PASSWORD) \
             .option("driver", "org.postgresql.Driver") \
             .load()
+
+        logger.info(f"JDBC read done | raw_rows={df.count()} | table={table_name}")
 
         # Với dòng DELETE, LEFT JOIN làm cột khóa (o.<col_name>) bị NULL.
         # Khôi phục khóa từ _cdc_id để MERGE phía sau match và xóa được bản ghi.

@@ -1,13 +1,20 @@
 from config.spark_session import create_spark_session
 from datetime import datetime
 from config.database import JDBC_URL,POSTGRES_USER,POSTGRES_PASSWORD
+from config.logging_config import get_logger
 from pyspark.sql.functions import col, coalesce
 
+
+logger = get_logger("bronze.crm.change_ingest")
 
 
 def change_ingest_crm(old_watermark, batch_end, table_name: str, col_name: str):
     spark = None
     try:
+        logger.info(
+            f"Starting CDC extract | table={table_name} | key={col_name} | "
+            f"window=({old_watermark} , {batch_end}]"
+        )
         spark = create_spark_session("bronze_crm")
         # LEFT JOIN: giữ lại các dòng DELETE dù bản ghi đã biến mất khỏi bảng nguồn.
         # l.id luôn mang giá trị khóa chính (kể cả OLD.<pk> khi xóa); o.* sẽ NULL cho dòng DELETE.
@@ -41,6 +48,8 @@ def change_ingest_crm(old_watermark, batch_end, table_name: str, col_name: str):
             .option("driver", "org.postgresql.Driver") \
             .load()
 
+        logger.info(f"JDBC read done | raw_rows={df.count()} | table={table_name}")
+
         # Với dòng DELETE, LEFT JOIN làm cột khóa (o.<col_name>) bị NULL.
         # Khôi phục khóa từ _cdc_id để MERGE phía sau match và xóa được bản ghi.
         # Giữ nguyên tên + kiểu dữ liệu của cột khóa -> các file merge không cần đổi.
@@ -50,9 +59,11 @@ def change_ingest_crm(old_watermark, batch_end, table_name: str, col_name: str):
             coalesce(col(col_name), col("_cdc_id").cast(key_type))
         ).drop("_cdc_id")
 
+        logger.info(f"CDC extract completed | table={table_name}")
         return spark, df
     except Exception as e:
-        print (e)
+        logger.error(f"CDC extract failed | table={table_name} | error={e}")
+        raise
 
 
 

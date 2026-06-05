@@ -7,12 +7,12 @@ import json
 from config.logging_config import get_logger
 
 
+logger = get_logger("bronze.crm_customer_snapshot")
 
 
 def customers_snapshot():
     spark = None
-    try: 
-        logger = get_logger("bronze.crm_customer_snapshot")
+    try:
         logger.info("Starting CRM customer snapshot job")
         spark = create_spark_session("bronze_customer_snapshot")
         
@@ -40,7 +40,7 @@ def customers_snapshot():
         parquet_path = f"{base_path}/data"
 
 
-        df.write.mode("overwrite").option("compressidataon", "snappy").parquet(parquet_path)
+        df.write.mode("overwrite").option("compression", "snappy").parquet(parquet_path)
 
         
         # ghi meta data
@@ -49,8 +49,8 @@ def customers_snapshot():
             "table": "customer",
             "extract_type": "snapshot",
             "load_date": load_date,
-            "row_count": df.count(),
-            "column_count": len(df.columns),
+            "row_count": row_count,
+            "column_count": col_count,
             "schema": df.schema.simpleString(),
             "created_at": datetime.now().isoformat()
         }]
@@ -70,12 +70,13 @@ def customers_snapshot():
         logger.info("Snapshot job completed successfully")
 
     except Exception as e:
-        print (f"ERROR: {e}")
+        logger.error(f"Snapshot job failed | error={e}")
+        raise
 
     finally:
         if spark is not None:
             spark.stop()
-            print ("Spark was stopped")
+            logger.info("Spark was stopped")
 if __name__ == "__main__":
     customers_snapshot()
 

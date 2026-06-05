@@ -3,8 +3,10 @@
 #
 from config.spark_session import create_spark_session
 from pyspark.sql.functions import col, current_timestamp
+from config.logging_config import get_logger
 
 
+logger = get_logger("silver.crm.customers.bootstrap")
 
 
 def bootstrap_crm_customers():
@@ -35,15 +37,16 @@ def bootstrap_crm_customers():
             .tableProperty("format-version", "2")
             .createOrReplace()
         )
-        print ("Iceberg table created sussessfully")
+        logger.info("Iceberg table created sussessfully")
 
     except Exception as e:
-        print (e)
+        logger.error(f"Bootstrap CRM customers failed | error={e}")
+        raise
 
     finally:
         if spark is not None:
             spark.stop()
-            print ("Spark was stopped")
+            logger.info("Spark was stopped")
 
 if __name__ =="__main__":
     bootstrap_crm_customers()

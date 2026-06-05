@@ -1,19 +1,47 @@
-from utils.logger import get_logger
+import logging
+import os
+from logging.handlers import TimedRotatingFileHandler
 
-logger = get_logger(__name__)
+# project root = .../ETL_BatchProcessing (lên 1 cấp từ utils/)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOG_DIR = os.path.join(PROJECT_ROOT, "logs")
 
-logger.info("CDC pipeline started")
 
-try:
+def get_logger(name: str):
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 
-    logger.info("Reading bronze files")
+    logger = logging.getLogger(name)
 
-    # ETL logic
+    # tránh add handler trùng khi import nhiều lần
+    if logger.handlers:
+        return logger
 
-    logger.info("Merge completed")
+    logger.setLevel(log_level)
+    logger.propagate = False  # không cho log nổi lên root -> tránh in 2 lần
 
-except Exception as e:
+    fmt = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    )
 
-    logger.error(f"Pipeline failed: {e}")
+    # -----------------------
+    # Console handler
+    # -----------------------
+    console = logging.StreamHandler()
+    console.setFormatter(fmt)
+    logger.addHandler(console)
 
-    raise
+    # -----------------------
+    # File handler (xoay theo ngày, giữ 14 ngày gần nhất)
+    # -----------------------
+    os.makedirs(LOG_DIR, exist_ok=True)
+    file_handler = TimedRotatingFileHandler(
+        os.path.join(LOG_DIR, "pipeline.log"),
+        when="midnight",
+        backupCount=14,
+        encoding="utf-8",
+    )
+    file_handler.suffix = "%Y-%m-%d"
+    file_handler.setFormatter(fmt)
+    logger.addHandler(file_handler)
+
+    return logger
