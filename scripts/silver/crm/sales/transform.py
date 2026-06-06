@@ -1,108 +1,90 @@
+# Transform silver.crm.sales (nguồn: CRM.sales_details)
+#
+# Đọc lại bảng Iceberg lakehouse.crm.sales (đã bootstrap + merge CDC),
+# làm sạch/chuẩn hoá tại chỗ rồi ghi đè lại bảng:
+#   - ngày (int yyyymmdd): 0 / sai độ dài -> NULL, còn lại -> DateType
+#   - sls_sales: NULL / <=0 / không khớp quantity*|price| -> tính lại = quantity*|price|
+#   - sls_price: NULL / <=0 -> tính lại = sales / quantity
+
 from config.spark_session import create_spark_session
-from pyspark.sql.functions import (
-                                    regexp_replace,
-                                    substring,
-                                    when,
-                                    upper,
-                                    trim,
-                                    coalesce,
-                                    lit,
-                                    lead,
-                                    date_sub,
-                                    to_date, col, length, abs)
-from datetime import datetime
-from pyspark.sql.window import Window
+from pyspark.sql import DataFrame
+from pyspark.sql.functions import col, when, to_date, length, abs
+from utils.logger import get_logger
 
 
-def transform_crm_sales():
+logger = get_logger("silver.crm.sales.transform")
+
+ICEBERG_TABLE = "lakehouse.crm.sales"
+
+
+def _clean_date(date_col):
+    """int yyyymmdd -> DateType; 0 / sai độ dài -> NULL."""
+    return when(
+        (date_col == 0) | (length(date_col.cast("string")) != 8),
+        None,
+    ).otherwise(to_date(date_col.cast("string"), "yyyyMMdd"))
+
+
+def transform_crm_sales(df: DataFrame) -> DataFrame:
+    """Chuẩn hoá cột cho crm sales. Hàm thuần (pure) -> dễ unit-test."""
+    return (
+        df.withColumn("sls_order_dt", _clean_date(col("sls_order_dt")))
+        .withColumn("sls_ship_dt", _clean_date(col("sls_ship_dt")))
+        .withColumn("sls_due_dt", _clean_date(col("sls_due_dt")))
+        # sales: tính lại nếu null / <=0 / không khớp quantity*|price|
+        .withColumn(
+            "sls_sales",
+            when(
+                col("sls_sales").isNull()
+                | (col("sls_sales") <= 0)
+                | (col("sls_sales") != col("sls_quantity") * abs(col("sls_price"))),
+                col("sls_quantity") * abs(col("sls_price")),
+            ).otherwise(col("sls_sales")),
+        )
+        # price: tính lại nếu null / <=0
+        .withColumn(
+            "sls_price",
+            when(
+                col("sls_price").isNull() | (col("sls_price") <= 0),
+                col("sls_sales").cast("double") / col("sls_quantity"),
+            ).otherwise(col("sls_price").cast("double")),
+        )
+    )
+
+
+def run():
     spark = None
     try:
-        load_date = datetime.today().strftime("%Y-%m-%d")
-        spark = create_spark_session ("transform_crm_sales")
+        spark = create_spark_session("transform_crm_sales")
+        logger.info(f"Bắt đầu transform | table={ICEBERG_TABLE}")
 
-        
-        df = spark.read.format("iceberg").load("lakehouse.crm.sales")
-        
-        # df.show ()
-        # df.printSchema()
+        df = spark.read.format("iceberg").load(ICEBERG_TABLE)
 
-        df_result = (
-            df.withColumn(
-                "sls_order_dt",
-                when(
-                    (col("sls_order_dt") == 0) |
-                    (length(col("sls_order_dt").cast("string")) != 8),
-                    None
-                ).otherwise(
-                    to_date(col("sls_order_dt").cast("string"), "yyyyMMdd")
-                )
-            )
+        # Materialize trước khi ghi đè để tránh đọc-và-ghi-đè cùng một bảng.
+        df_clean = transform_crm_sales(df).cache()
+        row_count = df_clean.count()
+        logger.info(f"Đã transform | rows={row_count}")
+        df_clean.show()
 
-            # ship date
-            .withColumn(
-                "sls_ship_dt",
-                when(
-                    (col("sls_ship_dt") == 0) |
-                    (length(col("sls_ship_dt").cast("string")) != 8),
-                    None
-                ).otherwise(
-                    to_date(col("sls_ship_dt").cast("string"), "yyyyMMdd")
-                )
-            )
-
-            # due date
-            .withColumn(
-                "sls_due_dt",
-                when(
-                    (col("sls_due_dt") == 0) |
-                    (length(col("sls_due_dt").cast("string")) != 8),
-                    None
-                ).otherwise(
-                    to_date(col("sls_due_dt").cast("string"), "yyyyMMdd")
-                )
-            )
-
-            # sales
-            .withColumn(
-                "sls_sales",
-                when(
-                    col("sls_sales").isNull()
-                    | (col("sls_sales") <= 0)
-                    | (
-                        col("sls_sales")
-                        != col("sls_quantity") * abs(col("sls_price"))
-                    ),
-                    col("sls_quantity") * abs(col("sls_price"))
-                ).otherwise(col("sls_sales"))
-            )
-
-            # price
-            .withColumn(
-                "sls_price",
-                when(
-                    col("sls_price").isNull()
-                    | (col("sls_price") <= 0),
-                    (
-                        col("sls_sales").cast("double")
-                        / col("sls_quantity")
-                    )
-                ).otherwise(
-                    col("sls_price").cast("double")
-                )
-            )
+        (
+            df_clean.writeTo(ICEBERG_TABLE)
+            .using("iceberg")
+            .partitionedBy("_created_at")
+            .tableProperty("format-version", "2")
+            .createOrReplace()
         )
-        df_result.show()    
-        df_result.printSchema()
-    
-               
+        df_clean.unpersist()
+
+        logger.info(f"Transform hoàn tất | table={ICEBERG_TABLE} | rows={row_count}")
+
     except Exception as e:
-        print(f"Error in transform_crm_sales: {e}")
+        logger.error(f"Transform thất bại | table={ICEBERG_TABLE} | error={e}")
+        raise
     finally:
-        if spark:
-            spark.stop()     
+        if spark is not None:
+            spark.stop()
+            logger.info("Spark was stopped")
+
 
 if __name__ == "__main__":
-    transform_crm_sales()  
-
-
-
+    run()

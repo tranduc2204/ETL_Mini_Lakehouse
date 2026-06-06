@@ -43,6 +43,7 @@ def bootstrap_crm_sales():
 
     except Exception as e:
         print (e)
+        raise
 
     finally:
         if spark is not None:

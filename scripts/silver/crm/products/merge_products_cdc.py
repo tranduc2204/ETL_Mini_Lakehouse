@@ -146,6 +146,7 @@ def merge_crm_products():
         
     except Exception as e:
         print (e)
+        raise
     finally: 
         if spark is not None:
             spark.stop()

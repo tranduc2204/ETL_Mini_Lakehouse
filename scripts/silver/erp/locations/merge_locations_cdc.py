@@ -97,6 +97,7 @@ def merge_loacations_cdc():
 
     except Exception as e:
         print("Error: ", e)
+        raise
     finally:
         if spark:
             spark.stop()

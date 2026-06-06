@@ -72,6 +72,7 @@ def sales_detail_snapshot():
 
     except Exception as e:
         print (f"ERROR: {e}")
+        raise
 
     finally:
         if spark is not None:

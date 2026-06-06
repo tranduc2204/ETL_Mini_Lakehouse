@@ -36,6 +36,7 @@ def bootstrap_crm_locations():
 
     except Exception as e:
         print (e)
+        raise
 
     finally:
         if spark is not None:

@@ -109,6 +109,7 @@ def merge_categories_cdc():
 
     except Exception as e:
         print(f"Error: {e}")
+        raise
     finally:
         if spark:
             spark.stop()

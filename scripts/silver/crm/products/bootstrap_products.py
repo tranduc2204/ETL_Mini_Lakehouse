@@ -38,6 +38,7 @@ def bootstrap_crm_products():
         print ("Iceberg table created sussessfully")
     except Exception as e:
         print (e)
+        raise
     finally:
         if spark is not None:
             spark.stop()

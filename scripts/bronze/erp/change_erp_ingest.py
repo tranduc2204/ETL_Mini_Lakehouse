@@ -61,6 +61,7 @@ def change_ingest_erp(old_watermark, batch_end, table_name: str, col_name: str):
         return spark, df
     except Exception as e:
         print (e)
+        raise
  
 
 
