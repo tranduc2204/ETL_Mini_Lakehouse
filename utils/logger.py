@@ -4,7 +4,11 @@ from logging.handlers import TimedRotatingFileHandler
 
 # project root = .../ETL_BatchProcessing (lên 1 cấp từ utils/)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOG_DIR = os.path.join(PROJECT_ROOT, "logs")
+# Cho phép override thư mục log qua env APP_LOG_DIR.
+# Khi chạy trong Airflow, /opt/airflow/logs là thư mục log của Airflow (owner uid 50000)
+# -> set APP_LOG_DIR=/opt/airflow/app_logs để tách riêng, tránh xung đột quyền ghi.
+# Mặc định (chạy local bằng venv) vẫn ghi vào ./logs như trước.
+LOG_DIR = os.getenv("APP_LOG_DIR") or os.path.join(PROJECT_ROOT, "logs")
 
 
 def get_logger(name: str):

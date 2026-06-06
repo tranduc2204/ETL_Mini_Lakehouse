@@ -1,7 +1,7 @@
 from config.spark_session import create_spark_session
 from utils.watermark import list_file_processed_crm, save_list_file_processed_crm
 import os
-from pyspark.sql.functions import col, lit, rank, col, row_number
+from pyspark.sql.functions import col, lit, rank, col, row_number, to_date
 from pyspark.sql.window import Window
 from datetime import datetime
 
@@ -84,14 +84,17 @@ def merge_crm_products():
                 "_created_at"
             )
 
-       
-            df_merge.createOrReplaceTempView("products_cdc_latest")    
-            
-            # print info schema
-            df_result.printSchema()
-            spark.table("lakehouse.crm.products").printSchema()
+            # bronze CDC lưu prd_start_dt/prd_end_dt là STRING, bảng Iceberg là DATE
+            # -> cast về date để MERGE không bị INCOMPATIBLE_DATA_FOR_TABLE
+            df_merge = (
+                df_merge
+                .withColumn("prd_start_dt", to_date(col("prd_start_dt")))
+                .withColumn("prd_end_dt", to_date(col("prd_end_dt")))
+            )
 
-             
+            df_merge.createOrReplaceTempView("products_cdc_latest")
+            
+        
             
             spark.sql("""
                 MERGE INTO lakehouse.crm.products t
@@ -140,7 +143,7 @@ def merge_crm_products():
 
             print ("check: ", new_file, load_date)
 
-            save_list_file_processed_crm (files_name= new_file, processed_at= load_date, table_name= 'cust_info')
+            save_list_file_processed_crm (files_name= new_file, processed_at= load_date, table_name= 'crm_products')
             # print ("tổng số dòng", df_latest.count())
     
         
@@ -157,19 +160,6 @@ if __name__ == "__main__":
     merge_crm_products()
 
 
-
-
-
-        #           col("sls_ord_num"),
-        #         col("sls_prd_key"),
-        #         col("sls_cust_id"),
-        #         col("sls_order_dt"),
-        #         col("sls_ship_dt"),
-        #         col("sls_due_dt"),
-        #         col("sls_sales"),
-        #         col("sls_quantity"),
-        #         col("sls_price"),
-        #         col("_created_at")
 
 
 

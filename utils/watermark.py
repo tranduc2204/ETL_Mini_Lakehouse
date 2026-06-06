@@ -132,10 +132,13 @@ def list_file_processed_crm(table_name: str):
         WHERE table_name = '{table_name}'
     """
 
+
     result_df = pd.read_sql(
         query,
         engine_crm
     )
+
+    
     processed_files = result_df['file_name'].tolist()
     
     return processed_files

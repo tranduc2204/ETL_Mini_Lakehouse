@@ -1,0 +1,13 @@
+2026-06-05 10:17:09,912 | INFO | smoke.test | logger ok
+2026-06-05 13:04:45,731 | INFO | test.silver.erp.customers.transform | PASS - test_transform_erp_customers
+2026-06-05 13:04:45,892 | INFO | test.silver.erp.customers.transform | PASS - test_nas_prefix_removed
+2026-06-05 13:04:46,018 | INFO | test.silver.erp.customers.transform | PASS - test_future_bdate_nulled
+2026-06-05 13:04:46,142 | INFO | test.silver.erp.customers.transform | PASS - test_gender_normalized
+2026-06-05 13:04:46,142 | INFO | test.silver.erp.customers.transform | Kết quả: 4/4 test PASS
+2026-06-05 13:10:07,952 | INFO | test.silver.erp.transform | PASS - test_customers_transform
+2026-06-05 13:10:08,128 | INFO | test.silver.erp.transform | PASS - test_locations_transform
+2026-06-05 13:10:08,258 | INFO | test.silver.erp.transform | PASS - test_categories_transform
+2026-06-05 13:10:08,258 | INFO | test.silver.erp.transform | Kết quả: 3/3 test PASS
+2026-06-06 04:12:44,374 | INFO | bronze.crm.change_ingest | Starting CDC extract | table=cust_info | key=cst_id | window=(2026-05-30 21:51:05.079668+00:00 , 2026-05-30 21:51:05.079668+00:00]
+2026-06-06 04:12:49,386 | INFO | bronze.crm.change_ingest | JDBC read done | raw_rows=0 | table=cust_info
+2026-06-06 04:12:49,462 | INFO | bronze.crm.change_ingest | CDC extract completed | table=cust_info

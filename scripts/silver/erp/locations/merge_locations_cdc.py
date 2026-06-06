@@ -14,16 +14,21 @@ def merge_loacations_cdc():
         path = """
         s3a://bronze/cdc/erp/locations/load_date=*/
         """.strip()
-
+         
         # list input files so we can filter by watermark
         df = spark.read.parquet(path)
         files_list = []
         for f in df.inputFiles():
             files_list.append(f)
-
+        
+        
+      
         processed_files = list_file_processed_crm("erp_loc_cdc")
+       
         new_file = [file for file in files_list if file not in processed_files]
-
+        
+        print ("files_list: ", new_file)
+         
         if not new_file:
             print("No new file to process")
             return
@@ -37,10 +42,10 @@ def merge_loacations_cdc():
                 col("operation_type"),
                 col("changed_at"),
             )
-
+            
             # standardize timestamp column for dedup (consistent with merge_customers_cdc)
             df_cdc = df_cdc.withColumn("_created_at", col("changed_at")).drop(col("changed_at"))
-
+            
             # deduplicate: keep latest record per cid
             window_spec = Window.partitionBy("cid").orderBy(col("_created_at").desc())
             df_result = (
@@ -55,9 +60,9 @@ def merge_loacations_cdc():
                 "_created_at",
                 "operation_type",
             )
-
+            
             df_merge.createOrReplaceTempView("locations_cdc_latest")
-
+           
             spark.sql("""
                 MERGE INTO lakehouse.erp.locations t
                 USING locations_cdc_latest s
@@ -83,7 +88,7 @@ def merge_loacations_cdc():
                     s._created_at
                 )
             """)
-
+          
             # reload (consistent pattern with other merges)
             df = spark.read.format("iceberg").load("lakehouse.erp.locations")
 

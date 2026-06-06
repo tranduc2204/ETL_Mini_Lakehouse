@@ -45,16 +45,35 @@ services:
       - postgres
     environment:
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      # LocalExecutor: chạy task trong subprocess riêng (song song), không block scheduler.
+      # SequentialExecutor (mặc định) chạy task ngay trong process scheduler -> task Spark
+      # nặng sẽ giữ chân scheduler -> mất heartbeat. Cần metadata DB là Postgres (đã có).
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      # repo root nằm ở /opt/airflow trong container -> import tuyệt đối from config/utils chạy được
+      PYTHONPATH: /opt/airflow
+      # override localhost trong .env: trong mạng docker phải gọi theo service name.
+      # load_dotenv() mặc định KHÔNG ghi đè biến đã có sẵn -> 2 dòng này thắng .env.
+      POSTGRES_HOST: postgres
+      MINIO_ENDPOINT: http://minio:9000
+      # tách log của project ra khỏi thư mục log Airflow (/opt/airflow/logs)
+      APP_LOG_DIR: /opt/airflow/app_logs
     volumes:
       - ./dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
       - ./data:/opt/airflow/data
+      # các thứ scripts cần nhưng trước đây chưa mount:
+      - ./config:/opt/airflow/config
+      - ./utils:/opt/airflow/utils
+      - ./jars:/opt/airflow/jars
+      - ./.env:/opt/airflow/.env
+      # log riêng của project (logger trong utils/logger.py)
+      - ./app_logs:/opt/airflow/app_logs
     ports:
       - "8080:8080"
     command: webserver
@@ -69,16 +88,26 @@ services:
       - postgres
     environment:
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      PYTHONPATH: /opt/airflow
+      POSTGRES_HOST: postgres
+      MINIO_ENDPOINT: http://minio:9000
+      APP_LOG_DIR: /opt/airflow/app_logs
     volumes:
       - ./dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
       - ./data:/opt/airflow/data
+      - ./config:/opt/airflow/config
+      - ./utils:/opt/airflow/utils
+      - ./jars:/opt/airflow/jars
+      - ./.env:/opt/airflow/.env
+      - ./app_logs:/opt/airflow/app_logs
     command: scheduler
 
   spark-master:

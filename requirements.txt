@@ -1,8 +1,16 @@
 python-dotenv
-pandas
-sqlalchemy
+# pandas>=2.2 yêu cầu SQLAlchemy>=2.0, nhưng apache-airflow ghim SQLAlchemy<2.0.
+# Giữ pandas<2.2 (kéo theo numpy<2) để pd.read_sql nhận diện được Engine của SQLAlchemy 1.4.
+pandas<2.2
+numpy<2
+sqlalchemy<2.0
 psycopg2-binary
 pyarrow
 pytest
 pyspark==3.5.1
+# Pin trùng version trong image apache/airflow:2.9.3 để IDE resolve được import DAG
+# và môi trường local khớp với container (trong image đã có sẵn nên pip sẽ no-op).
+apache-airflow==2.9.3
 # boto3
+
+

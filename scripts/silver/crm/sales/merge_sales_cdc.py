@@ -1,7 +1,7 @@
 from config.spark_session import create_spark_session
 from utils.watermark import list_file_processed_crm, save_list_file_processed_crm
 import os
-from pyspark.sql.functions import col, lit, rank, col, row_number
+from pyspark.sql.functions import col, lit, rank, col, row_number, to_date
 from pyspark.sql.window import Window
 from datetime import datetime
 
@@ -80,7 +80,18 @@ def merge_crm_sales():
                 col("_created_at"),
                 col("operation_type")
             )
-            df_merge.createOrReplaceTempView("sales_cdc_latest")    
+
+            # bronze CDC lưu ngày dạng INT yyyyMMdd, bảng Iceberg là DATE; sls_price là INT, bảng là DOUBLE
+            # -> cast cho khớp schema để MERGE không bị INCOMPATIBLE_DATA_FOR_TABLE
+            df_merge = (
+                df_merge
+                .withColumn("sls_order_dt", to_date(col("sls_order_dt").cast("string"), "yyyyMMdd"))
+                .withColumn("sls_ship_dt", to_date(col("sls_ship_dt").cast("string"), "yyyyMMdd"))
+                .withColumn("sls_due_dt", to_date(col("sls_due_dt").cast("string"), "yyyyMMdd"))
+                .withColumn("sls_price", col("sls_price").cast("double"))
+            )
+
+            df_merge.createOrReplaceTempView("sales_cdc_latest")
             
             # print info schema
             df_result.printSchema()
@@ -137,7 +148,7 @@ def merge_crm_sales():
             print ("check: ", new_file, load_date)
 
             
-            save_list_file_processed_crm (files_name= new_file, processed_at= load_date, table_name= 'sales_details')
+            save_list_file_processed_crm (files_name= new_file, processed_at= load_date, table_name= 'crm_sales')
 
     except Exception as e:
         print (e)  
