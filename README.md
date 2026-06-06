@@ -28,6 +28,8 @@
 - [Cách chạy pipeline](#-cách-chạy-pipeline)
 - [Kiểm thử (testing)](#-kiểm-thử-testing)
 - [Bảng nguồn & ánh xạ](#-bảng-nguồn--ánh-xạ)
+- [Ràng buộc phiên bản dependency](#-ràng-buộc-phiên-bản-dependency)
+- [Troubleshooting — lỗi thường gặp](#-troubleshooting--lỗi-thường-gặp)
 - [Roadmap](#-roadmap)
 - [Những điểm cần lưu ý (known issues)](#-những-điểm-cần-lưu-ý-known-issues)
 
@@ -252,6 +254,48 @@ pytest test/test.py -v
 
 **State tables (Postgres):** `crm_pipeline_state` / `erp_pipeline_state` (watermark) và `processed_files`
 (idempotency cấp file cho bước merge).
+
+> ⚠️ **Lưu ý idempotency:** bảng `processed_files` dùng `ON CONFLICT (file_name) DO NOTHING` (khóa trùng theo
+> `file_name`). `list_file_processed_crm` và `save_list_file_processed_crm` phân biệt dòng bằng `table_name`,
+> nên **tên `table_name` ở bước list và save phải khớp nhau** — nếu lệch, file được lưu dưới một tên nhưng tra
+> cứu bằng tên khác → pipeline merge lại file cũ mỗi lần chạy. Bảng này **chỉ nằm trong schema `CRM`** và được
+> **cả CRM lẫn ERP** dùng chung (helper `*_crm` — tên gây hiểu nhầm).
+
+---
+
+## 📌 Ràng buộc phiên bản dependency
+
+Stack này **kén version** do Airflow ghim SQLAlchemy ở nhánh cũ, kéo theo ràng buộc dây chuyền với pandas/numpy:
+
+| Package | Phiên bản yêu cầu | Lý do |
+|---|---|---|
+| **SQLAlchemy** | `< 2.0` (1.4.x) | `apache-airflow==2.9.3` ghim `SQLAlchemy < 2.0` |
+| **pandas** | `< 2.2` (vd 2.1.4) | pandas ≥ 2.2 yêu cầu SQLAlchemy ≥ 2.0; với SA 1.4, `pd.read_sql` không nhận diện được Engine |
+| **numpy** | `< 2` (vd 1.26.4) | pandas < 2.2 chưa hỗ trợ numpy 2.x (xung đột nhị phân) |
+
+→ Bộ tương thích: **SQLAlchemy 1.4 + pandas < 2.2 + numpy < 2**. Đã pin trong [requirements.txt](requirements.txt).
+
+**`future=True` cho SQLAlchemy engine:** các engine trong [config/conn.py](config/conn.py) tạo với `future=True`
+để dùng API 2.0-style. Nếu thiếu, ở SQLAlchemy 1.4 `engine.connect()` trả về Connection **legacy không có
+`conn.commit()`** → các hàm `save_list_file_processed_crm` / `update_watermark_*` (vốn gọi `conn.commit()`) sẽ
+lỗi `'Connection' object has no attribute 'commit'`.
+
+---
+
+## 🛠 Troubleshooting — lỗi thường gặp
+
+| Triệu chứng | Nguyên nhân | Cách xử lý |
+|---|---|---|
+| `AttributeError: 'Engine' object has no attribute 'cursor'` (tại `pd.read_sql`) | pandas ≥ 2.2 + SQLAlchemy 1.4 không tương thích | Pin `pandas<2.2` + `numpy<2` (xem mục Ràng buộc phiên bản) |
+| `AttributeError: 'Connection' object has no attribute 'commit'` | Engine thiếu `future=True` (Connection legacy SA 1.4) | Thêm `future=True` vào `create_engine` trong [config/conn.py](config/conn.py) |
+| `[TABLE_OR_VIEW_NOT_FOUND] lakehouse.<src>.<table>` (tại bước merge) | Chưa chạy **bootstrap** tạo bảng Iceberg | Chạy `python -m scripts.silver.<src>.<table>.bootstrap_*` (1 lần) trước khi merge |
+| `[INCOMPATIBLE_DATA_FOR_TABLE.CANNOT_SAFELY_CAST] Cannot safely cast ... STRING/INT to DATE` | Bronze CDC lưu ngày dạng STRING/INT nhưng bảng Iceberg là DATE | Cast trước MERGE: STRING ISO → `to_date(col)`; INT `yyyyMMdd` → `to_date(col.cast("string"), "yyyyMMdd")`; INT→DOUBLE → `.cast("double")` |
+| Merge **lặp lại file cũ** dù đã chạy thành công | `table_name` ở `list_` ≠ ở `save_` → idempotency hỏng (kẹt `ON CONFLICT`) | Đồng bộ `table_name` ở 2 chỗ; nếu DB đã lưu sai, `UPDATE "CRM".processed_files SET table_name=... WHERE ...` cho khớp |
+| `pd.read_sql` trả `None` / không có dữ liệu | Còn dòng `return`/`print` debug chặn giữa hàm | Bỏ code debug để hàm chạy hết phần truy vấn |
+
+> 💡 **Mẹo:** vì nhiều job cũ nuốt lỗi bằng `except Exception: print(e)`, một bug ở stage sớm (vd `read_sql`)
+> có thể che khuất các bug ở stage sau. Sau khi sửa gốc, hãy chạy lại từng stage để các lỗi tiềm ẩn (cast kiểu,
+> `table_name` lệch) lộ ra và xử lý lần lượt.
 
 ---
 
